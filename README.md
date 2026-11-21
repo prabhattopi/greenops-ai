@@ -4,6 +4,10 @@
 > *Theme: ESG Automation — "Data to Action"*  
 > *Official Sponsors: RunCloud, TechTamu, EzyEvents*
 
+<p align="center">
+  <img src="public/thumbnail.png" alt="GreenOps AI Banner" width="100%" />
+</p>
+
 [![Next.js 16](https://img.shields.io/badge/Next.js-16.4-black?logo=next.js)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19.3-blue?logo=react)](https://react.dev/)
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4.3-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
