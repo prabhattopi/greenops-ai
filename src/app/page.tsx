@@ -16,18 +16,26 @@ import {
   ShieldCheck, 
   Cpu, 
   Globe2,
-  TrendingDown
+  TrendingDown,
+  Check
 } from 'lucide-react';
 import { INITIAL_SERVERS, INITIAL_RECOMMENDATIONS } from '@/lib/mock-data';
 import { calculateHourlyCarbonGrams, calculateServerPowerWatts, REGIONAL_GRID_REGISTRY } from '@/lib/carbon-engine';
 import { ServerInstance, ActionRecommendation, ServerRegion } from '@/types';
+import ActionExecutionModal, { ActionExecutionResult } from '@/components/ActionExecutionModal';
 
 export default function DashboardPage() {
   const [servers, setServers] = useState<ServerInstance[]>(INITIAL_SERVERS);
   const [recommendations, setRecommendations] = useState<ActionRecommendation[]>(INITIAL_RECOMMENDATIONS);
   const [selectedRegion, setSelectedRegion] = useState<ServerRegion>('seoul');
   const [isSimulatingSync, setIsSimulatingSync] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'servers' | 'grid' | 'actions'>('overview');
+
+  // Action Execution Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [actionResult, setActionResult] = useState<ActionExecutionResult | null>(null);
 
   // Dynamic calculations
   const totalHourlyCarbonGrams = servers.reduce((acc, s) => acc + calculateHourlyCarbonGrams(s), 0);
@@ -36,47 +44,77 @@ export default function DashboardPage() {
     .filter(r => !r.applied)
     .reduce((acc, r) => acc + r.potentialCo2ReductionGrams, 0);
 
-  const handleApplyAction = (recId: string) => {
-    setRecommendations(prev => 
-      prev.map(r => r.id === recId ? { ...r, applied: true } : r)
-    );
+  const handleApplyAction = async (recId: string) => {
+    setIsActionLoading(true);
+    setIsModalOpen(true);
 
-    // Apply simulation effect on servers
-    if (recId === 'rec-01') {
-      // Shifted Seoul jobs
-      setServers(prev => prev.map(s => {
-        if (s.region === 'seoul') {
-          return {
-            ...s,
-            cpuUsage: Math.max(20, s.cpuUsage - 22),
-            scheduledCronJobs: s.scheduledCronJobs.map(c => ({
-              ...c,
-              status: 'shifted' as const
-            }))
-          };
-        }
-        return s;
-      }));
-    } else if (recId === 'rec-02') {
-      // Eco throttle Virginia crawler
-      setServers(prev => prev.map(s => {
-        if (s.id === 'srv-runcloud-us-03') {
-          return {
-            ...s,
-            status: 'eco-throttled' as const,
-            cpuUsage: Math.max(20, s.cpuUsage - 25)
-          };
-        }
-        return s;
-      }));
+    try {
+      const response = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId: recId, serverRegion: selectedRegion }),
+      });
+
+      const data: ActionExecutionResult = await response.json();
+      setActionResult(data);
+
+      // Apply dynamic state updates
+      setRecommendations(prev => 
+        prev.map(r => r.id === recId ? { ...r, applied: true } : r)
+      );
+
+      if (recId === 'rec-01') {
+        setServers(prev => prev.map(s => {
+          if (s.region === 'seoul') {
+            return {
+              ...s,
+              cpuUsage: Math.max(20, s.cpuUsage - 22),
+              scheduledCronJobs: s.scheduledCronJobs.map(c => ({
+                ...c,
+                status: 'shifted' as const,
+              }))
+            };
+          }
+          return s;
+        }));
+      } else if (recId === 'rec-02') {
+        setServers(prev => prev.map(s => {
+          if (s.id === 'srv-runcloud-us-03') {
+            return {
+              ...s,
+              status: 'eco-throttled' as const,
+              cpuUsage: Math.max(20, s.cpuUsage - 25),
+            };
+          }
+          return s;
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to dispatch action', err);
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
-  const handleSimulateSync = () => {
+  const handleSimulateSync = async () => {
     setIsSimulatingSync(true);
-    setTimeout(() => {
+    setSyncMessage(null);
+
+    try {
+      const res = await fetch('/api/telemetry');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.servers) {
+          setServers(data.servers);
+        }
+        setSyncMessage(`RunCloud API synced • Live Telemetry Active (${new Date().toLocaleTimeString()})`);
+        setTimeout(() => setSyncMessage(null), 4000);
+      }
+    } catch (err) {
+      console.error('Sync failed', err);
+    } finally {
       setIsSimulatingSync(false);
-    }, 1200);
+    }
   };
 
   const currentGrid = REGIONAL_GRID_REGISTRY[selectedRegion];
@@ -84,7 +122,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* Top Navbar */}
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
@@ -102,12 +140,19 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center space-x-3">
+            {syncMessage && (
+              <span className="hidden md:inline-flex items-center text-xs text-emerald-400 font-medium animate-in fade-in">
+                <Check className="w-3.5 h-3.5 mr-1" />
+                {syncMessage}
+              </span>
+            )}
+
             <button
               onClick={handleSimulateSync}
               className="flex items-center space-x-1.5 px-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-all cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${isSimulatingSync ? 'animate-spin text-emerald-400' : ''}`} />
-              <span>{isSimulatingSync ? 'Syncing Telemetry...' : 'Sync RunCloud API'}</span>
+              <span>{isSimulatingSync ? 'Syncing...' : 'Sync RunCloud API'}</span>
             </button>
 
             <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-800/50 text-emerald-300 text-xs">
@@ -295,7 +340,7 @@ export default function DashboardPage() {
                   </h3>
                   <button 
                     onClick={() => setActiveTab('servers')}
-                    className="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"
                   >
                     View All Details →
                   </button>
@@ -323,7 +368,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                           <div 
-                            className={`h-full rounded-full ${srv.cpuUsage > 75 ? 'bg-amber-400' : 'bg-emerald-400'}`} 
+                            className={`h-full rounded-full transition-all duration-500 ${srv.cpuUsage > 75 ? 'bg-amber-400' : 'bg-emerald-400'}`} 
                             style={{ width: `${srv.cpuUsage}%` }} 
                           />
                         </div>
@@ -350,7 +395,7 @@ export default function DashboardPage() {
                   <select
                     value={selectedRegion}
                     onChange={(e) => setSelectedRegion(e.target.value as ServerRegion)}
-                    className="bg-slate-800 border border-slate-700 rounded-lg text-xs px-2.5 py-1 text-slate-200 focus:outline-none focus:border-emerald-500"
+                    className="bg-slate-800 border border-slate-700 rounded-lg text-xs px-2.5 py-1 text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
                   >
                     <option value="seoul">Seoul, Korea</option>
                     <option value="frankfurt">Frankfurt, Germany</option>
@@ -549,6 +594,14 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* Action Execution Modal */}
+      <ActionExecutionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        result={actionResult}
+        isLoading={isActionLoading}
+      />
     </div>
   );
 }
