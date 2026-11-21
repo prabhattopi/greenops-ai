@@ -24,6 +24,7 @@ import { calculateHourlyCarbonGrams, calculateServerPowerWatts, REGIONAL_GRID_RE
 import { ServerInstance, ActionRecommendation, ServerRegion } from '@/types';
 import ActionExecutionModal, { ActionExecutionResult } from '@/components/ActionExecutionModal';
 import GeminiCopilotDrawer from '@/components/GeminiCopilotDrawer';
+import ESGAuditModal from '@/components/ESGAuditModal';
 
 export default function DashboardPage() {
   const [servers, setServers] = useState<ServerInstance[]>(INITIAL_SERVERS);
@@ -40,6 +41,9 @@ export default function DashboardPage() {
 
   // Gemini Copilot Drawer State
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+
+  // ESG Audit Certificate Modal State
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
 
   // Dynamic calculations
   const totalHourlyCarbonGrams = servers.reduce((acc, s) => acc + calculateHourlyCarbonGrams(s), 0);
@@ -231,7 +235,11 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-slate-700 transition">
+          <div 
+            onClick={() => setIsAuditModalOpen(true)}
+            className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-emerald-500/50 transition cursor-pointer"
+            title="Click to view Official ESG Audit Certificate"
+          >
             <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-bl-full pointer-events-none" />
             <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-2">
               <span>ESG AUDIT RATING</span>
@@ -243,8 +251,8 @@ export default function DashboardPage() {
               </span>
               <span className="text-xs text-emerald-400 font-medium">Scope 2 Compliant</span>
             </div>
-            <p className="text-xs text-slate-400 mt-2">
-              GHG Protocol Digital Standard
+            <p className="text-xs text-emerald-400/80 mt-2 flex items-center">
+              <span>View Audit Certificate →</span>
             </p>
           </div>
         </section>
@@ -467,7 +475,10 @@ export default function DashboardPage() {
                   Compliant with GHG Protocol Corporate Standard & EU CSRD Digital Emission regulations.
                 </p>
                 <div className="space-y-2">
-                  <button className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs flex items-center justify-center space-x-2 border border-slate-700 transition cursor-pointer">
+                  <button 
+                    onClick={() => setIsAuditModalOpen(true)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs flex items-center justify-center space-x-2 border border-slate-700 transition cursor-pointer"
+                  >
                     <Download className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Download ESG Audit Certificate (PDF)</span>
                   </button>
@@ -622,6 +633,13 @@ export default function DashboardPage() {
       <GeminiCopilotDrawer
         isOpen={isCopilotOpen}
         onClose={() => setIsCopilotOpen(false)}
+      />
+
+      {/* ESG Compliance Audit Certificate Modal */}
+      <ESGAuditModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        servers={servers}
       />
     </div>
   );
