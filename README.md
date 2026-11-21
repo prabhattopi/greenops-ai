@@ -33,34 +33,40 @@ It does not merely display dashboards—it delivers **"Data to Action"**:
 
 ## ⚡ The "Data to Action" Pipeline
 
-```
-┌─────────────────────────────────┐       ┌─────────────────────────────────┐
-│     RunCloud Server Nodes       │       │    Regional Power Grid API      │
-│  (CPU %, RAM %, TDP, PUE, IP)   │       │ (Seoul 418g, Frankfurt 295g...) │
-└────────────────┬────────────────┘       └────────────────┬────────────────┘
-                 │                                         │
-                 └───────────────────┬─────────────────────┘
-                                     │
-                                     ▼
-                ┌───────────────────────────────────────────┐
-                │      GHG Protocol Math Engine (Scope 2)   │
-                │    Calculates instantaneous gCO2eq / hr   │
-                └────────────────────┬──────────────────────┘
-                                     │
-                                     ▼
-                ┌───────────────────────────────────────────┐
-                │        Autonomous Action Engine           │
-                │  - Detects dirty peak hours (19:00 KST)   │
-                │  - Identifies clean window (02:00 KST)    │
-                └────────────────────┬──────────────────────┘
-                                     │
-           ┌─────────────────────────┴─────────────────────────┐
-           ▼                                                   ▼
-┌─────────────────────────────────────┐     ┌─────────────────────────────────────┐
-│    RunCloud Webhook Dispatcher      │     │      Gemini Flash ESG Copilot       │
-│  POST /api/v2/servers/cron/shift    │     │  Live root-cause reasoning +        │
-│  Generates Linux crontab script     │     │  1-Click CSRD Audit Certificate PDF │
-└─────────────────────────────────────┘     └─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph DataIngestion["📡 1. Real-Time Data Ingestion"]
+        S[("🖥️ RunCloud Managed Nodes<br/>• CPU & Memory Load<br/>• Hardware TDP Ratings<br/>• Data Center PUE")]
+        G[("🌐 Regional Grid Telemetry<br/>• Seoul: 418 gCO2/kWh<br/>• Frankfurt: 295 gCO2/kWh<br/>• London: 185 gCO2/kWh")]
+    end
+
+    subgraph Analytics["🧮 2. GHG Protocol Carbon Engine"]
+        M{"⚡ Dynamic Scope 2 Modeling<br/>Power = [Idle + (TDP-Idle)*CPU%] * PUE<br/>CO2 = Energy * Grid Factor"}
+    end
+
+    subgraph ActionEngine["🚀 3. Autonomous Action Engine"]
+        D{"🔍 Carbon Peak Detected?<br/>Peak fossil window vs clean off-peak"}
+        D -->|Dirty Peak Detected| SHIFT["🌿 Autonomous Green Shifter<br/>Shift heavy batch jobs to clean window"]
+        D -->|Normal Grid| MON["✅ Continuous Fleet Monitor"]
+    end
+
+    subgraph Execution["🎯 4. Multi-Channel Execution"]
+        W["🔌 RunCloud API Webhook<br/>POST /api/v2/servers/cron/reschedule<br/>Automated crontab & systemd script"]
+        AI["🤖 Gemini Flash ESG Copilot<br/>Real-time root-cause analysis"]
+        PDF["📜 1-Click ESG Certificate<br/>Signed AAA Audit PDF Export"]
+    end
+
+    S --> M
+    G --> M
+    M --> D
+    SHIFT --> W
+    SHIFT --> AI
+    SHIFT --> PDF
+
+    classDef green fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef slate fill:#0f172a,stroke:#334155,stroke-width:1px,color:#e2e8f0;
+    class S,G,M,D,W,AI,PDF,SHIFT,MON slate;
+    class SHIFT,W,AI,PDF green;
 ```
 
 ---
