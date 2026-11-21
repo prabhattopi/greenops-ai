@@ -23,6 +23,7 @@ import { INITIAL_SERVERS, INITIAL_RECOMMENDATIONS } from '@/lib/mock-data';
 import { calculateHourlyCarbonGrams, calculateServerPowerWatts, REGIONAL_GRID_REGISTRY } from '@/lib/carbon-engine';
 import { ServerInstance, ActionRecommendation, ServerRegion } from '@/types';
 import ActionExecutionModal, { ActionExecutionResult } from '@/components/ActionExecutionModal';
+import GeminiCopilotDrawer from '@/components/GeminiCopilotDrawer';
 
 export default function DashboardPage() {
   const [servers, setServers] = useState<ServerInstance[]>(INITIAL_SERVERS);
@@ -36,6 +37,9 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [actionResult, setActionResult] = useState<ActionExecutionResult | null>(null);
+
+  // Gemini Copilot Drawer State
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
 
   // Dynamic calculations
   const totalHourlyCarbonGrams = servers.reduce((acc, s) => acc + calculateHourlyCarbonGrams(s), 0);
@@ -146,6 +150,14 @@ export default function DashboardPage() {
                 {syncMessage}
               </span>
             )}
+
+            <button
+              onClick={() => setIsCopilotOpen(true)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs rounded-lg border border-emerald-500/40 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 transition-all cursor-pointer font-medium"
+            >
+              <MessageSquareCode className="w-3.5 h-3.5 text-emerald-400" />
+              <span>AI Copilot</span>
+            </button>
 
             <button
               onClick={handleSimulateSync}
@@ -459,7 +471,10 @@ export default function DashboardPage() {
                     <Download className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Download ESG Audit Certificate (PDF)</span>
                   </button>
-                  <button className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold text-xs flex items-center justify-center space-x-2 border border-emerald-500/30 transition cursor-pointer">
+                  <button 
+                    onClick={() => setIsCopilotOpen(true)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold text-xs flex items-center justify-center space-x-2 border border-emerald-500/30 transition cursor-pointer"
+                  >
                     <MessageSquareCode className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Ask Gemini ESG Copilot</span>
                   </button>
@@ -601,6 +616,12 @@ export default function DashboardPage() {
         onClose={() => setIsModalOpen(false)}
         result={actionResult}
         isLoading={isActionLoading}
+      />
+
+      {/* Gemini ESG Copilot Drawer */}
+      <GeminiCopilotDrawer
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
       />
     </div>
   );
